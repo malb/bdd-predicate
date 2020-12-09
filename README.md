@@ -71,7 +71,22 @@ if  __name__=='__main__':
         print("Failed")
 ```
 
+## Implemented Algorithms
+
+Our algorithms solve the unique shortest vector problem augmented with a predicate. Using Kannan's embedding this enables to solve bounded distance decoding augmented with a predicate.
+
+- **Enumeration with Predicate**: This algorithm performs lattice-point enumeration within a ball of radius *R*, for each point *v* found it checks whether the predicate *f(⋅)* holds, i.e. if *f(v) = 1*.
+
+- **Sieving with Predicate**: This algorithm performs lattice sieving followed by a check for each point *v* of norm bounded by *((4/3)^(1/2) ⋅ gh(Λ)* whether the predicate *f(⋅)* holds, i.e. if *f(v) = 1*.
+
+- **BKZ** with sieving or enumeration followed by a check for each point *v* in the output basis whether the predicate *f(⋅)* holds, i.e. if *f(v) = 1*.
+
 ## How to Install/Run
+
+This framework builds on
+
+- [FPLLL](https://github.com/fplll/fplll) and [FyLLL](https://github.com/fplll/fpylll) for datastructures and lattice-point enumeration, and
+- [G6k](https://github.com/fplll/g6k) for lattice sieving.
 
 ### Using Conda/Manually
 
