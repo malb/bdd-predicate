@@ -50,9 +50,7 @@ def ecdsa():
 @click.option("-j", "--jobs", help="Number of parallel jobs", default=1)
 @click.option("-p", "--parallelism", help="Number of threads per job", default=1)
 @click.option("-s", "--seed", help="Randomness seed", type=int, default=None)
-@click.option(
-    "-d", "--dimension", help="Lattice dimension ≤ m+1, default: m+1", type=int, default=None
-)
+@click.option("-d", "--dimension", help="Lattice dimension ≤ m+1, default: m+1", type=int, default=None)
 @click.option(
     "-P",
     "--params",
@@ -71,21 +69,7 @@ def ecdsa():
     type=click.Choice(["DEBUG", "INFO", "WARNING"], case_sensitive=False),
     default="INFO",
 )
-def benchmark(
-    nlen,
-    klen,
-    m,
-    e,
-    algorithm,
-    flavor,
-    tasks,
-    jobs,
-    parallelism,
-    seed,
-    dimension,
-    params,
-    loglvl="DEBUG",
-):
+def benchmark(nlen, klen, m, e, algorithm, flavor, tasks, jobs, parallelism, seed, dimension, params, loglvl="DEBUG"):
     """
     Generate random instances and report solving statistics.
 
@@ -140,13 +124,7 @@ def benchmark(
     type=click.Choice(ECDSA.supported_curves().keys(), case_sensitive=False),
     default="secp256k1",
 )
-@click.option(
-    "-m",
-    "--m",
-    default=None,
-    type=int,
-    help="Number of samples considered (optional, default: all)",
-)
+@click.option("-m", "--m", default=None, type=int, help="Number of samples considered (optional, default: all)")
 @click.option(
     "-a",
     "--algorithm",
@@ -242,11 +220,7 @@ def estimate(nlen, klen, m, skip, loglvl, args):
 @ecdsa.command()  # noqa: C901
 @click.argument("filename", type=str)
 @click.option(
-    "-p",
-    "--predicate",
-    help="Predicate to decide if a statistic should be considered",
-    type=str,
-    default="bool(stat)",
+    "-p", "--predicate", help="Predicate to decide if a statistic should be considered", type=str, default="bool(stat)"
 )
 @click.option(
     "-c",
@@ -319,12 +293,7 @@ def parse_benchmark(filename, predicate, csvfilename):
             return float(self.trials) != 0.0
 
         def __lt__(self, other):
-            return (self.nlen, self.klen, self.m, self.alg) < (
-                other.nlen,
-                other.klen,
-                other.m,
-                self.alg,
-            )
+            return (self.nlen, self.klen, self.m, self.alg) < (other.nlen, other.klen, other.m, self.alg)
 
         def ct(self, unit="m"):
             if unit == "s":
@@ -384,9 +353,7 @@ def parse_benchmark(filename, predicate, csvfilename):
             date, host, nlen, m, klen, alg, seed, params = re.match(pattern, line).groups()
             tag = abs(hash((date, host, nlen, m, klen, alg, seed, params)))
         elif re.match(pattern_w_tag, line):
-            date, host, tag, nlen, m, klen, errors, alg, seed, params = re.match(
-                pattern_w_tag, line
-            ).groups()
+            date, host, tag, nlen, m, klen, errors, alg, seed, params = re.match(pattern_w_tag, line).groups()
             tag = int(tag, 16)
 
         if params:
@@ -457,9 +424,7 @@ def parse_benchmark(filename, predicate, csvfilename):
     if csvfilename:
         with open(csvfilename, "w") as fh:
             writer = csv.writer(fh, delimiter=",")
-            writer.writerow(
-                ["nlen", "klen", "m", "e", "alg", "sr", "work", "ct", "wt", "ctsr", "wtsr", "params"]
-            )
+            writer.writerow(["nlen", "klen", "m", "e", "alg", "sr", "work", "ct", "wt", "ctsr", "wtsr", "params"])
 
             for stat in sorted(stats.values()):
                 if stat.tag != "prev" and eval(predicate):
