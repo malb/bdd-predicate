@@ -2,10 +2,10 @@
 
 This repository contains the Python/Sagemath source code for solving Bounded Distance Decoding augmented with a predicate characterising the target as introduced in:
 
-> **On Bounded Distance Decoding with Predicate: Breaking the "Lattice Barrier"" for the Hidden Number Problem**
-
-> Martin R. Albrecht and Nadia Heninger
-
+> **On Bounded Distance Decoding with Predicate: Breaking the "Lattice Barrier"" for the Hidden Number Problem**  
+>
+> *Martin R. Albrecht and Nadia Heninger*  
+>
 > Lattice-based algorithms in cryptanalysis often search for a target vector satisfying integer linear constraints as a shortest or closest vector in some lattice.  In this work, we observe that these formulations may discard non-linear information from the underlying application that can be used to distinguish the target vector even when it is far from being uniquely close or short.  
 
 > We formalize lattice problems augmented with a predicate distinguishing a target vector and give algorithms for solving instances of these problems. We apply our techniques to lattice-based approaches for solving the Hidden Number Problem, a popular technique for recovering secret DSA or ECDSA keys in side-channel attacks, and demonstrate that our algorithms succeed in recovering the signing key for instances that were previously believed to be unsolvable using lattice approaches. We carried out extensive experiments using our estimation and solving framework, which we also make available with this work.
