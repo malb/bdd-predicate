@@ -14,6 +14,8 @@ If you use this library in your work please cite
 
   Martin R. Albrecht and Nadia Heninger. *On Bounded Distance Decoding with Predicate: Breaking the "Lattice Barrier" for the Hidden Number Problem**
 
+The flagship application of this work is solving ECDSA with known nonce bits.
+
 **TODO** Update reference
 
 ## How to Install/Run
