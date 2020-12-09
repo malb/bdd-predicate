@@ -310,6 +310,7 @@ class ECDSASolver(object):
     @cached_method
     def _data_for_test(self, M=None):
         """
+        Return precomputed data used in predicate tests.
         """
         if M is None:
             M = self.M
