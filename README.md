@@ -5,8 +5,8 @@
 ### Using Conda/Manually
 
 ``` shell
-conda create -n usvpp python=3.7
-conda activate usvpp
+conda create -n bddp python=3.7
+conda activate bddp
 conda install -c conda-forge sage
 
 git clone https://github.com/fplll/fplll
@@ -42,10 +42,10 @@ Running
 docker run -ti --rm -v `pwd`:/bdd-predicate -w /bdd-predicate martinralbrecht/bdd-predicate
 ```
 
-from the root directory of this repository  will start SageMath with recent versions of FPLLL, FPyLLL and G6K installed. Our code is available under `/usvpp`. Thus, e.g.
+from the root directory of this repository  will start SageMath with recent versions of FPLLL, FPyLLL and G6K installed. Our code is available under `/bdd-predicate`. Thus, e.g.
 
 ``` python
-cd /usvpp
+cd /bdd-predicate
 load("usvp.py")
 ```
 
