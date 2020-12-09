@@ -107,11 +107,6 @@ if  __name__=='__main__':
         print("Failed")
 ```
 
-## Todo
-
-- Tests
-- CI
-
 ## Attribution/Citing
 
 If you use this library please cite
