@@ -77,7 +77,7 @@ Our algorithms solve the unique shortest vector problem augmented with a predica
 
 - **Enumeration with Predicate**: This algorithm performs lattice-point enumeration within a ball of radius *R*, for each point *v* found it checks whether the predicate *f(⋅)* holds, i.e. if *f(v) = 1*.
 
-- **Sieving with Predicate**: This algorithm performs lattice sieving followed by a check for each point *v* of norm bounded by *((4/3)^(1/2) ⋅ gh(Λ)* whether the predicate *f(⋅)* holds, i.e. if *f(v) = 1*.
+- **Sieving with Predicate**: This algorithm performs lattice sieving followed by a check for points *v* of norm bounded by *(4/3)^(1/2) ⋅ gh(Λ)* whether the predicate *f(⋅)* holds, i.e. if *f(v) = 1*.
 
 - **BKZ** with sieving or enumeration followed by a check for each point *v* in the output basis whether the predicate *f(⋅)* holds, i.e. if *f(v) = 1*.
 
