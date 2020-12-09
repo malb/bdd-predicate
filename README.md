@@ -12,67 +12,13 @@ This repository contains the Python/Sagemath source code for solving Bounded Dis
 
 If you use this library in your work please cite
 
-  Martin R. Albrecht and Nadia Heninger. *On Bounded Distance Decoding with Predicate: Breaking the "Lattice Barrier" for the Hidden Number Problem**
-
-The flagship application of this work is solving ECDSA with known nonce bits.
+  Martin R. Albrecht and Nadia Heninger. *On Bounded Distance Decoding with Predicate: Breaking the "Lattice Barrier" for the Hidden Number Problem*
 
 **TODO** Update reference
 
-## How to Install/Run
-
-### Using Conda/Manually
-
-``` shell
-conda create -n bddp python=3.7
-conda activate bddp
-conda install -c conda-forge sage
-
-git clone https://github.com/fplll/fplll
-cd fplll
-autoreconf -i
-./configure --prefix=$SAGE_LOCAL --disable-static
-make install
-cd ..
-
-git clone https://github.com/fplll/fpylll
-cd fpylll
-pip install -r requirements.txt
-pip install -r suggestions.txt
-python setup.py build
-python setup.py -q install
-cd ..
-    
-git clone https://github.com/fplll/g6k
-cd g6k
-make
-pip install -r requirements.txt
-./rebuild.sh
-python setup.py build
-python setup.py -q install 
-cd ..
-```
-
-### Using Docker
-
-Running
-
-``` shell
-docker run -ti --rm -v `pwd`:/bdd-predicate -w /bdd-predicate martinralbrecht/bdd-predicate
-```
-
-from the root directory of this repository  will start SageMath with recent versions of FPLLL, FPyLLL and G6K installed. Our code is available under `/bdd-predicate`. Thus, e.g.
-
-``` python
-cd /bdd-predicate
-load("usvp.py")
-```
-
-will load it.
-
-
 ## ECDSA with Partially Known Nonces
 
-The `ecdsa_cli.py` script provides a high level entry point.
+The flagship application of this work is solving ECDSA with known nonce bits. The `ecdsa_cli.py` script provides a high level entry point.
 
 1. To get estimates for the running times of the different algorithms for a set of parameters, the `estimate` functionality can be invoked as
 
@@ -125,3 +71,53 @@ if  __name__=='__main__':
         print("Failed")
 ```
 
+## How to Install/Run
+
+### Using Conda/Manually
+
+``` shell
+conda create -n bddp python=3.7
+conda activate bddp
+conda install -c conda-forge sage
+
+git clone https://github.com/fplll/fplll
+cd fplll
+autoreconf -i
+./configure --prefix=$SAGE_LOCAL --disable-static
+make install
+cd ..
+
+git clone https://github.com/fplll/fpylll
+cd fpylll
+pip install -r requirements.txt
+pip install -r suggestions.txt
+python setup.py build
+python setup.py -q install
+cd ..
+    
+git clone https://github.com/fplll/g6k
+cd g6k
+make
+pip install -r requirements.txt
+./rebuild.sh
+python setup.py build
+python setup.py -q install 
+cd ..
+```
+
+### Using Docker
+
+Running
+
+``` shell
+docker run -ti --rm -v `pwd`:/bdd-predicate -w /bdd-predicate martinralbrecht/bdd-predicate
+```
+
+from the root directory of this repository  will start SageMath with recent versions of FPLLL, FPyLLL and G6K installed. Our code is available under `/bdd-predicate`. Thus, e.g.
+
+``` python
+cd /bdd-predicate
+load("usvp.py")
+```
+
+will load it.
