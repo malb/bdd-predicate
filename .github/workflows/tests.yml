@@ -1,0 +1,24 @@
+name: Run Tests
+
+on:
+  push:
+  pull_request:
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+             python-version: '3.x'
+
+      - name: Check out
+        uses: actions/checkout@v2
+
+      - name: Dependencies
+        run: docker pull martinralbrecht/bdd-predicate:latest
+
+      - name: Run Tests
+        run: docker run --rm -v `pwd`:/home/sage/bddp -w /home/sage/bddp martinralbrecht/bdd-predicate py.test
