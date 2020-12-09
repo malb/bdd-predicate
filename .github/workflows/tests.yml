@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Dependencies
-        run: docker pull martinralbrecht/bdd-predicate:latests
+        run: docker pull martinralbrecht/bdd-predicate:latest
 
       - name: Run Tests
         run: docker run -it --rm -v `pwd`:/home/sage/bddp -w /home/sage/bddp martinralbrecht/bdd-predicate py.test
