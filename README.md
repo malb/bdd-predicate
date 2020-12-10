@@ -85,7 +85,7 @@ Our algorithms solve the unique shortest vector problem augmented with a predica
 
 This framework builds on
 
-- [FPLLL](https://github.com/fplll/fplll) and [FyLLL](https://github.com/fplll/fpylll) for datastructures and lattice-point enumeration, and
+- [FPLLL](https://github.com/fplll/fplll) and [FPyLLL](https://github.com/fplll/fpylll) for datastructures and lattice-point enumeration, and
 - [G6k](https://github.com/fplll/g6k) for lattice sieving.
 
 ### Using Conda/Manually
