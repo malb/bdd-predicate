@@ -14,8 +14,6 @@ If you use this library in your work please cite
 
   Martin R. Albrecht and Nadia Heninger. *On Bounded Distance Decoding with Predicate: Breaking the "Lattice Barrier" for the Hidden Number Problem*. Cryptology ePrint Archive: [Report 2020/1540](https://ia.cr/2020/1540)
 
-**TODO** Update reference
-
 ## ECDSA with Partially Known Nonces
 
 The flagship application of this work is solving ECDSA with known nonce bits. The `ecdsa_cli.py` script provides a high level entry point.
