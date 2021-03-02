@@ -12,7 +12,7 @@ This repository contains the Python/Sagemath source code for solving Bounded Dis
 
 If you use this library in your work please cite
 
-  Martin R. Albrecht and Nadia Heninger. *On Bounded Distance Decoding with Predicate: Breaking the "Lattice Barrier" for the Hidden Number Problem*. Cryptology ePrint Archive: [Report 2020/1540](https://ia.cr/2020/1540)
+  Martin R. Albrecht and Nadia Heninger. *On Bounded Distance Decoding with Predicate: Breaking the "Lattice Barrier" for the Hidden Number Problem*. EUROCRYPT 2021. full version available as Cryptology ePrint Archive: [Report 2020/1540](https://ia.cr/2020/1540)
 
 ## ECDSA with Partially Known Nonces
 
