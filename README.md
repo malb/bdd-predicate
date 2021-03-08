@@ -42,7 +42,7 @@ The flagship application of this work is solving ECDSA with known nonce bits. Th
     sage -python ecdsa_cli.py solve -c secp256k1 sample_input.txt
     ```
 
-    Each line of the file is a space-separated list of the bit length of the nonce, the hex-encoded hash used in the ECDSA signature, the hex-encoded ECDSA signature as (r,s) concatenated together, and the hex-encoded public key.
+    Each line of the file is a space-separated list of the bit length of the nonce, the hex-encoded hash used in the ECDSA signature, the hex-encoded ECDSA signature as (r,s) concatenated together, and the hex-encoded public key.  The `ecdsa.sample` function will generate sample input in this form.
 
 For the moment, our scripts assume the most significant bits of the nonce are 0. If your use case involves known nonzero most significant bits, least significant bits, or another case, you can either transform your signatures and hash values accordingly, or modify our script to implement that case.
 
