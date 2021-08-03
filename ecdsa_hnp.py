@@ -70,7 +70,7 @@ class ECDSA(object):
             elif nbits == 256:
                 curve = "secp256k1"
             elif nbits == 320:
-                curve = "brainpool320r1"
+                curve = "brainpoolp320r1"
             elif nbits == 384:
                 curve = "nist384p"
             elif nbits == 521:
