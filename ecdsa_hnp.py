@@ -70,7 +70,7 @@ class ECDSA(object):
             elif nbits == 256:
                 curve = "secp256k1"
             elif nbits == 320:
-                curve = "brainpoolp320r1"
+                curve = "brainpool320r1"
             elif nbits == 384:
                 curve = "nist384p"
             elif nbits == 521:
@@ -110,18 +110,22 @@ class ECDSA(object):
             return k, sig
         return sig
 
-    def sample(self, m=2, klen_list=None, seed=None, errors=0.0):
+    def sample(self, m=2, klen_list=None, seed=None, errors=0.0, knownlen_list=None, is_msb=True, is_zero=False):
         """
-        Sample `m` leaky signatures.
+        Sample `m` signatures with specified nonce leakage (not necessarily zero).
 
-        :param m:
-        :param klen_list:
-        :param seed:
+        :param m: number of signatures to generate
+        :param klen_list: list of nonce lengths (counting known + unknown bits)
+        :param seed: seed for PRNG
         :param errors: fraction of signatures that are 1 bit longer than ``klen_list`` specifies
-
+        :param knownlen_list: list of lengths of known nonce bits
+        :param is_msb: True if the known nonce bits are MSB, False for LSB
+        :param is_zero: True if the known nonce bits are all 0 (for MSB only)
         """
         if klen_list is None:
-            klen_list = [128] * m
+            klen_list = [256] * m
+        if knownlen_list is None:
+            knownlen_list = [8] * m
         import ecdsa as ecdsam
         from ecdsa.util import PRNG
 
@@ -137,12 +141,40 @@ class ECDSA(object):
         for i in range(m):
             h = ZZ.random_element(2 ** self.nbits)
             hb = itob(h, self.baselen)
-            if errors > 0 and random() < errors:
-                k, sss = self.sign(hb, sk, klen=klen_list[i] + 1, return_k=True)
+            # TODO: Handle nonzero errors. Not sure if this is different for nonzero MSBs?
+            if is_zero:
+                k, sss = self.sign(hb, sk, klen=klen_list[i] - knownlen_list[i], return_k=True)
             else:
                 k, sss = self.sign(hb, sk, klen=klen_list[i], return_k=True)
             k_list.append(k)
-            lines.append("%s %s %s %s" % (str(klen_list[i]), bytes.hex(hb), bytes.hex(sss), bytes.hex(vk.to_string())))
+
+            if is_msb:
+                l = klen_list[i] - knownlen_list[i]
+                lsbi = lift(mod(k, 2 ** l))
+                msbi = Integer(k - lsbi)
+                msb = itob(msbi, self.baselen)
+                assert (lsbi + msbi == k)
+                assert (lsbi < Integer(2 ** l))
+
+                lines.append(
+                    "%s %s %s %s %s %s" % (
+                        str(klen_list[i]), str(knownlen_list[i]), bytes.hex(msb),
+                        bytes.hex(hb), bytes.hex(sss), bytes.hex(vk.to_string())
+                    )
+                )
+            else:
+                l = knownlen_list[i]
+                lsbi = lift(mod(k, 2 ** l))
+                lsb = itob(lsbi, self.baselen)
+                assert (lsbi < Integer(2 ** l))
+
+                lines.append(
+                    "%s %s %s %s %s %s" % (
+                        str(klen_list[i]), str(knownlen_list[i]), bytes.hex(lsb),
+                        bytes.hex(hb), bytes.hex(sss), bytes.hex(vk.to_string())
+                    )
+                )
+
         return lines, k_list, d
 
 
@@ -151,7 +183,7 @@ class ECDSASolver(object):
     Solve ECDSA with biased nonces.
     """
 
-    def __init__(self, ecdsa, lines, m, d=None, threads=1):
+    def __init__(self, ecdsa, lines, m, d=None, threads=1, is_msb=True):
         """
 
         :param ecdsa: ECDSA object
@@ -168,15 +200,23 @@ class ECDSASolver(object):
         self.s_list = []
         self.r_list = []
         self.h_list = []
+        self.is_msb = is_msb
+
+        self.knownlen_list = []
+        self.known_list = []
+
         self.m = 0
         self.vk = ""
         self.d = m + 1 if d is None else d
         self.threads = threads
 
         for line in lines:
-            klen, h, sig, key = line.strip().split()
+            klen, knownlen, known, h, sig, key = line.strip().split()
             self.klen_list.append(int(klen))
+            self.knownlen_list.append(int(knownlen))
             self.h_list.append(int(h, 16))
+            self.known_list.append(int(known, 16))
+
             if not self.vk:
                 self.pubx = btoi(binascii.unhexlify(key[: self.ecdsa.baselen * 2]))
                 self.puby = btoi(binascii.unhexlify(key[self.ecdsa.baselen * 2 :]))
@@ -184,6 +224,7 @@ class ECDSASolver(object):
                     itob(self.pubx, self.ecdsa.baselen) + itob(self.puby, self.ecdsa.baselen), curve=self.ecdsa.curve
                 )
                 self.vk = vk
+
             r = sig[: 2 * self.ecdsa.baselen]
             self.r_list.append(int(r, 16))
             s = sig[2 * self.ecdsa.baselen :]
@@ -196,6 +237,12 @@ class ECDSASolver(object):
         # TODO: we probably don't want to walk through this in order but randomised
         self.indices = Combinations(range(self.m), self.d - 1)
         self.nbases = 0
+
+        self.l_list = [(self.klen_list[i] - self.knownlen_list[i]) for i in range(0, len(self.klen_list))]
+        # klen_list is later assumed to be known lengths
+        for i in range(0, len(self.klen_list)):
+            self.klen_list[i] = self.l_list[i]
+
 
     def gen_lattice(self, d=None):
         """FIXME! briefly describe function
@@ -210,26 +257,45 @@ class ECDSASolver(object):
         except ValueError:
             raise StopIteration("No more bases to sample.")
         p = self.ecdsa.n
-        # w = 2 ** (self.klen - 1)
-        w_list = [2 ** (klen - 1) for klen in self.klen_list]
+
+        # w = 2 ** (self.l - 1)
+        w_list = [2 ** (l - 1) for l in self.l_list]
 
         r_list = [self.r_list[i] for i in I]
         s_list = [self.s_list[i] for i in I]
         h_list = [self.h_list[i] for i in I]
+        known_list = [self.known_list[i] for i in I]
+        knownlen_list = [self.knownlen_list[i] for i in I]
 
         rm = r_list[-1]
         sm = s_list[-1]
         hm = h_list[-1]
         wm = w_list[-1]
-        a_list = [
-            lift(
-                wi
-                - mod(r, p) * inverse_mod(s, p) * inverse_mod(rm, p) * mod(sm, p) * wm
-                - inverse_mod(s, p) * mod(h, p)
-                + mod(r, p) * inverse_mod(s, p) * mod(hm, p) * inverse_mod(rm, p)
-            )
-            for wi, h, r, s in zip(w_list[:-1], h_list[:-1], r_list[:-1], s_list[:-1])
-        ]
+        knownm = known_list[-1]
+        knownlenm = knownlen_list[-1]
+
+        if self.is_msb:
+            a_list = [
+                lift(
+                    - inverse_mod(s, p) * mod(h, p) + mod(knowni, p) + wi
+                    - mod(r, p) * inverse_mod(s, p) * inverse_mod(rm, p) * mod(sm, p) * (mod(knownm, p) + wm)
+                    + mod(r, p) * inverse_mod(s, p) * mod(hm, p) * inverse_mod(rm, p)
+                )
+                for wi, h, r, s, knowni in zip(w_list[:-1], h_list[:-1], r_list[:-1], s_list[:-1], known_list[:-1])
+            ]
+        else:
+            a_list = [
+                lift(
+                    wi
+                    + mod(knowni, p) * inverse_mod(2 ** knownleni, p)
+                    - inverse_mod(s, p) * mod(h, p) * inverse_mod(2 ** knownleni, p)
+                    - mod(r, p) * inverse_mod(s, p) * inverse_mod(rm, p) * mod(sm, p) * mod(2 ** knownlenm, p) * inverse_mod(2 ** knownleni, p) * wm
+                    - mod(r, p) * inverse_mod(s, p) * inverse_mod(rm, p) * mod(sm, p) * inverse_mod(2 ** knownleni, p) * mod(knownm, p)
+                    + mod(r, p) * inverse_mod(s, p) * mod(hm, p) * inverse_mod(rm, p) * inverse_mod(2 ** knownleni, p)
+                )
+                for wi, h, r, s, knowni, knownleni in zip(w_list[:-1], h_list[:-1], r_list[:-1], s_list[:-1], known_list[:-1], knownlen_list[:-1])
+            ]
+
         t_list = [
             -lift(mod(r, p) * inverse_mod(s, p) * inverse_mod(rm, p) * sm) for r, s in zip(r_list[:-1], s_list[:-1])
         ]
@@ -283,10 +349,14 @@ class ECDSASolver(object):
         return False
 
     def recover_key(self, solution_vector):
-        w = 2 ** (self.klen_list[0] - 1)
-        f = Integer((2 ** (max(self.klen_list) - 1)) / w)
+        w = 2 ** (self.l_list[0] - 1)
+        f = Integer((2 ** (max(self.l_list) - 1)) / w)
 
-        def test_key(k):
+        def test_key(k_lsb):
+            if self.is_msb:
+                k = Integer(self.known_list[0] + k_lsb)
+            else:
+                k = Integer(self.known_list[0] + k_lsb * (2 ** self.knownlen_list[0]))
             if (k * self.ecdsa.GG).xy()[0] == self.r_list[0]:
                 d = Integer(
                     mod(inverse_mod(self.r_list[0], self.ecdsa.n) * (k * self.s_list[0] - self.h_list[0]), self.ecdsa.n)
@@ -315,8 +385,8 @@ class ECDSASolver(object):
         if M is None:
             M = self.M
 
-        w = 2 ** (self.klen_list[0] - 1)
-        f = Integer((2 ** (max(self.klen_list) - 1)) / w)
+        w = 2 ** (self.l_list[0] - 1)
+        f = Integer((2 ** (max(self.l_list) - 1)) / w)
         G_powers = {}
         for row in range(M.B.nrows):
             G_powers[Integer(M.B[row][0] / f)] = Integer(M.B[row][0] / f) * self.ecdsa.GG
@@ -407,12 +477,12 @@ class ECDSASolver(object):
         if sample:
             self.M = self.gen_lattice()
 
-        tau = max([2 ** (klen - 1) for klen in self.klen_list])
+        tau = max([2 ** (l - 1) for l in self.l_list])
 
         def predicate(v, standard_basis=True):
             G_powers, A0, A1 = self._data_for_test()
-            w = 2 ** (self.klen_list[0] - 1)
-            f = Integer((2 ** (max(self.klen_list) - 1)) / w)
+            w = 2 ** (self.l_list[0] - 1)
+            f = Integer((2 ** (max(self.l_list) - 1)) / w)
 
             if standard_basis:
                 nz = v[-1]
@@ -427,7 +497,38 @@ class ECDSASolver(object):
             else:
                 kG = sum(round(v[i]) * G_powers[A0[i]] for i in range(len(A0)))
 
-            r = self.r_list[0]
+            if self.is_msb:
+                r = self.r_list[0]
+                msb = self.known_list[0]
+                lsb = v[0] // f
+
+                k1 = msb + w + lsb
+                k2 = msb + w - lsb
+
+                if (k1 * self.ecdsa.GG).xy()[0] == r:
+                    return True
+                elif (k2 * self.ecdsa.GG).xy()[0] == r:
+                    return True
+                else:
+                    return False
+
+            else:
+                r = self.r_list[0]
+                lsb = self.known_list[0]
+                t = self.knownlen_list[0]
+                kk = v[0] // f
+
+                k1 = (2 ** t) * (w + kk) + lsb
+                k2 = (2 ** t) * (w - kk) + lsb
+
+                if (k1 * self.ecdsa.GG).xy()[0] == r:
+                    return True
+                elif (k2 * self.ecdsa.GG).xy()[0] == r:
+                    return True
+                else:
+                    return False
+
+
             if (kG + G_powers[w]).xy()[0] == r:
                 return True
             elif (-kG + G_powers[w]).xy()[0] == r:
@@ -439,9 +540,9 @@ class ECDSASolver(object):
             self._data_for_test.clear_cache()
 
         if worst_case:
-            target_norm = self.mvf(self.m, max(self.klen_list), prec=self.ecdsa.nbits // 2)
+            target_norm = self.mvf(self.m, max(self.l_list), prec=self.ecdsa.nbits // 2)
         else:
-            target_norm = self.evf(self.m, max(self.klen_list), prec=self.ecdsa.nbits // 2)
+            target_norm = self.evf(self.m, max(self.l_list), prec=self.ecdsa.nbits // 2)
 
         LLL.Reduction(self.M)()
         invalidate_cache()
