@@ -110,6 +110,8 @@ cd ..
     
 git clone https://github.com/fplll/g6k
 cd g6k
+autoreconf -i
+./configure --prefix=$SAGE_LOCAL --disable-static
 make
 pip install -r requirements.txt
 ./rebuild.sh
