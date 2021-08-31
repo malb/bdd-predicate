@@ -42,9 +42,9 @@ The flagship application of this work is solving ECDSA with known nonce bits. Th
     sage -python ecdsa_cli.py solve -c secp256k1 sample_input.txt
     ```
 
-    Each line of the file is a space-separated list of the bit length of the nonce, the hex-encoded hash used in the ECDSA signature, the hex-encoded ECDSA signature as (r,s) concatenated together, and the hex-encoded public key.  The `ecdsa.sample` function will generate sample input in this form.
+    Each line of the file is a space-separated list of the length of the unknown bits of the nonce, whether the MSB or LSB are known, the hex-encoded known nonce bits, the hex-encoded hash used in the ECDSA signature, the hex-encoded ECDSA signature as (r,s) concatenated together, and the hex-encoded public key. The `ecdsa.sample` and `ecdsa.sample_msb_zero` functions will generate sample input in this form.
 
-For the moment, our scripts assume the most significant bits of the nonce are 0. If your use case involves known nonzero most significant bits, least significant bits, or another case, you can either transform your signatures and hash values accordingly, or modify our script to implement that case.
+Our `solve` scripts work for arbitrary most or least significant bits (although only all MSB or all LSB).
 
 The following example uses the `scale` strategy to continue searching until the solution is found, which can deal with errors in the data, and will parallelize the algorithm in 8 threads:
 
@@ -54,14 +54,14 @@ sage -python ecdsa_cli.py solve -c secp256k1 -f scale -p 8 sample_input.txt
 
 If you wish to write your own script to use our functions as a library, here is a small custom Python script that shows how to invoke the relevant functions to compute the secret key for some randomly generated data:
 ``` python
-from ecdsa_hnp import ECDSA, ECDSASolver,make_klen_list
+from ecdsa_hnp import ECDSA, ECDSASolver, make_klen_list
 
 if  __name__=='__main__':
     k = 252
     m = 70
     ecdsa = ECDSA(nbits=256)
-    lines, k_list, d = ecdsa.sample(m,make_klen_list(k,m))
-    solver = ECDSASolver(ecdsa,lines,m=m)
+    lines, k_list, d = ecdsa.sample(m=m, is_msb=True, klen_list=make_klen_list(k,m))
+    solver = ECDSASolver(ecdsa, lines, m=m)
     key, res = solver("bkz-enum")
     if res.success:
         print(hex(key))
@@ -107,7 +107,7 @@ pip install -r suggestions.txt
 python setup.py build
 python setup.py -q install
 cd ..
-    
+
 git clone https://github.com/fplll/g6k
 cd g6k
 autoreconf -i
@@ -116,7 +116,7 @@ make
 pip install -r requirements.txt
 ./rebuild.sh
 python setup.py build
-python setup.py -q install 
+python setup.py -q install
 cd ..
 ```
 
