@@ -90,34 +90,35 @@ class ECDSA(object):
         else:
             raise NotImplementedError("curve={curve} is not implemented".format(curve=curve))
 
-    def sign(self, h, sk, klen=256, return_k=False):
+    def sign(self, h, sk, nonce_len=256, return_nonce=False):
         """
-        Sign ``h`` and signing key ``sk``
+        Sign ``h`` with signing key ``sk``.
 
-        :param h: "hash"
+        :param h: message hash
         :param sk: signing key
-        :param klen: number of bits in the nonce.
-        :param return_k:
+        :param nonce_len: number of random bits in the nonce
+        :param return_nonce: True to return the nonce
 
         """
         d = btoi(sk.to_string())
         hi = btoi(h)
-        k = ZZ.random_element(2 ** klen)
-        r = Integer((self.GG * k).xy()[0])
-        s = lift(inverse_mod(k, self.n) * mod(hi + d * r, self.n))
+        nonce = ZZ.random_element(2 ** nonce_len)
+        r = Integer((self.GG * nonce).xy()[0])
+        s = lift(inverse_mod(nonce, self.n) * mod(hi + d * r, self.n))
         sig = itob(r, self.baselen) + itob(s, self.baselen)
-        if return_k:
-            return k, sig
+        if return_nonce:
+            return nonce, sig
         return sig
 
-    def sample(self, m=2, klen_list=None, seed=None, errors=0.0):
+    def sample_msb_zero(self, m=2, klen_list=None, seed=None, errors=0.0):
         """
-        Sample `m` leaky signatures.
+        Sample ``m`` signatures where the nonce has known leading 0 bits.
+        This corresponds to the scenario as described and benchmarked in the paper.
 
-        :param m:
-        :param klen_list:
-        :param seed:
-        :param errors: fraction of signatures that are 1 bit longer than ``klen_list`` specifies
+        :param m: number of signatures to generate
+        :param klen_list: list of lengths of unknown nonce bits
+        :param seed: seed for PRNG
+        :param errors: fraction of nonces with 1 more unknown bit than ``klen_list`` specifies
 
         """
         if klen_list is None:
@@ -138,11 +139,88 @@ class ECDSA(object):
             h = ZZ.random_element(2 ** self.nbits)
             hb = itob(h, self.baselen)
             if errors > 0 and random() < errors:
-                k, sss = self.sign(hb, sk, klen=klen_list[i] + 1, return_k=True)
+                k, sss = self.sign(hb, sk, nonce_len=klen_list[i] + 1, return_nonce=True)
             else:
-                k, sss = self.sign(hb, sk, klen=klen_list[i], return_k=True)
+                k, sss = self.sign(hb, sk, nonce_len=klen_list[i], return_nonce=True)
             k_list.append(k)
-            lines.append("%s %s %s %s" % (str(klen_list[i]), bytes.hex(hb), bytes.hex(sss), bytes.hex(vk.to_string())))
+            msbi = Integer(0)
+            msb = itob(msbi, self.baselen)
+            lines.append(
+                "%s %s %s %s %s %s"
+                % (str(klen_list[i]), "MSB", bytes.hex(msb), bytes.hex(hb), bytes.hex(sss), bytes.hex(vk.to_string()))
+            )
+        return lines, k_list, d
+
+    def sample(self, m=2, klen_list=None, seed=None, is_msb=True):
+        """
+        Sample ``m`` signatures with the specified nonce leakage.
+        The leaked bits may be MSB or LSB, and are random rather than necessarily 0 bits.
+        ``k`` refers to the unknown part of the nonce.
+
+        :param m: number of signatures to generate
+        :param klen_list: list of lengths of unknown nonce bits
+        :param seed: seed for PRNG
+        :param is_msb: True if the known nonce bits are MSB, False for LSB
+
+        """
+        if klen_list is None:
+            klen_list = [128] * m
+        import ecdsa as ecdsam
+        from ecdsa.util import PRNG
+
+        if seed is not None:
+            rng = PRNG(seed)
+        else:
+            rng = None
+        sk = ecdsam.SigningKey.generate(curve=self.curve, entropy=rng)
+        d = btoi(sk.to_string())
+        vk = sk.get_verifying_key()
+        lines = []
+        # ``k`` refers to the unknown HNP secret, not the full nonce
+        k_list = []
+
+        for i in range(m):
+            h = ZZ.random_element(2 ** self.nbits)
+            hb = itob(h, self.baselen)
+            nonce, sss = self.sign(hb, sk, nonce_len=self.nbits, return_nonce=True)
+
+            if is_msb:
+                k = lift(mod(nonce, 2 ** klen_list[i]))
+                msbi = Integer(nonce - k)
+                msb = itob(msbi, self.baselen)
+                assert k + msbi == nonce
+                assert k < Integer(2 ** klen_list[i])
+                k_list.append(k)
+                lines.append(
+                    "%s %s %s %s %s %s"
+                    % (
+                        str(klen_list[i]),
+                        "MSB",
+                        bytes.hex(msb),
+                        bytes.hex(hb),
+                        bytes.hex(sss),
+                        bytes.hex(vk.to_string()),
+                    )
+                )
+            else:
+                t = self.nbits - klen_list[i]
+                lsbi = lift(mod(nonce, 2 ** t))
+                lsb = itob(lsbi, self.baselen)
+                k = lift(inverse_mod(2 ** t, self.n) * (mod(nonce, self.n) - mod(lsbi, self.n)))
+                assert lsbi < Integer(2 ** t)
+                assert lsbi + k * Integer(2 ** t) == nonce
+                k_list.append(k)
+                lines.append(
+                    "%s %s %s %s %s %s"
+                    % (
+                        str(klen_list[i]),
+                        "LSB",
+                        bytes.hex(lsb),
+                        bytes.hex(hb),
+                        bytes.hex(sss),
+                        bytes.hex(vk.to_string()),
+                    )
+                )
         return lines, k_list, d
 
 
@@ -172,11 +250,17 @@ class ECDSASolver(object):
         self.vk = ""
         self.d = m + 1 if d is None else d
         self.threads = threads
+        self.is_msb = True
+        self.bias_list = []  # ``bias`` refers to the known/leaked bits
 
         for line in lines:
-            klen, h, sig, key = line.strip().split()
+            klen, xsb, bias, h, sig, key = line.strip().split()
             self.klen_list.append(int(klen))
+            if xsb == "LSB":
+                self.is_msb = False
+            self.bias_list.append(int(bias, 16))
             self.h_list.append(int(h, 16))
+
             if not self.vk:
                 self.pubx = btoi(binascii.unhexlify(key[: self.ecdsa.baselen * 2]))
                 self.puby = btoi(binascii.unhexlify(key[self.ecdsa.baselen * 2 :]))
@@ -184,6 +268,7 @@ class ECDSASolver(object):
                     itob(self.pubx, self.ecdsa.baselen) + itob(self.puby, self.ecdsa.baselen), curve=self.ecdsa.curve
                 )
                 self.vk = vk
+
             r = sig[: 2 * self.ecdsa.baselen]
             self.r_list.append(int(r, 16))
             s = sig[2 * self.ecdsa.baselen :]
@@ -210,29 +295,75 @@ class ECDSASolver(object):
         except ValueError:
             raise StopIteration("No more bases to sample.")
         p = self.ecdsa.n
+
         # w = 2 ** (self.klen - 1)
         w_list = [2 ** (klen - 1) for klen in self.klen_list]
 
         r_list = [self.r_list[i] for i in I]
         s_list = [self.s_list[i] for i in I]
         h_list = [self.h_list[i] for i in I]
+        bias_list = [self.bias_list[i] for i in I]
+        biaslen_list = [(self.ecdsa.nbits - self.klen_list[i]) for i in I]
 
         rm = r_list[-1]
         sm = s_list[-1]
         hm = h_list[-1]
         wm = w_list[-1]
-        a_list = [
-            lift(
-                wi
-                - mod(r, p) * inverse_mod(s, p) * inverse_mod(rm, p) * mod(sm, p) * wm
-                - inverse_mod(s, p) * mod(h, p)
-                + mod(r, p) * inverse_mod(s, p) * mod(hm, p) * inverse_mod(rm, p)
-            )
-            for wi, h, r, s in zip(w_list[:-1], h_list[:-1], r_list[:-1], s_list[:-1])
-        ]
-        t_list = [
-            -lift(mod(r, p) * inverse_mod(s, p) * inverse_mod(rm, p) * sm) for r, s in zip(r_list[:-1], s_list[:-1])
-        ]
+        bias_m = bias_list[-1]
+        biaslen_m = biaslen_list[-1]
+
+        if self.is_msb:
+            a_list = [
+                lift(
+                    -inverse_mod(s, p) * mod(h, p)
+                    + mod(bias_i, p)
+                    + wi
+                    - mod(r, p) * inverse_mod(s, p) * inverse_mod(rm, p) * mod(sm, p) * (mod(bias_m, p) + wm)
+                    + mod(r, p) * inverse_mod(s, p) * mod(hm, p) * inverse_mod(rm, p)
+                )
+                for wi, h, r, s, bias_i in zip(w_list[:-1], h_list[:-1], r_list[:-1], s_list[:-1], bias_list[:-1])
+            ]
+            t_list = [
+                lift(mod(r, p) * inverse_mod(s, p) * inverse_mod(rm, p) * mod(sm, p))
+                for r, s in zip(r_list[:-1], s_list[:-1])
+            ]
+
+        else:
+            a_list = [
+                lift(
+                    inverse_mod(2 ** biaslen_i, p) * mod(bias_i, p)
+                    + wi
+                    - inverse_mod(2 ** biaslen_i, p) * inverse_mod(s, p) * mod(h, p)
+                    - inverse_mod(2 ** biaslen_i, p)
+                    * inverse_mod(s, p)
+                    * mod(r, p)
+                    * mod(sm, p)
+                    * inverse_mod(rm, p)
+                    * mod(bias_m, p)
+                    + inverse_mod(2 ** biaslen_i, p) * inverse_mod(s, p) * mod(r, p) * inverse_mod(rm, p) * mod(hm, p)
+                    - inverse_mod(2 ** biaslen_i, p)
+                    * inverse_mod(s, p)
+                    * mod(r, p)
+                    * mod(2 ** biaslen_m, p)
+                    * mod(sm, p)
+                    * inverse_mod(rm, p)
+                    * wm
+                )
+                for wi, h, r, s, bias_i, biaslen_i in zip(
+                    w_list[:-1], h_list[:-1], r_list[:-1], s_list[:-1], bias_list[:-1], biaslen_list[:-1]
+                )
+            ]
+            t_list = [
+                lift(
+                    mod(r, p)
+                    * inverse_mod(s, p)
+                    * inverse_mod(rm, p)
+                    * mod(sm, p)
+                    * mod(2 ** biaslen_m, p)
+                    * inverse_mod(2 ** biaslen_i, p)
+                )
+                for r, s, biaslen_i in zip(r_list[:-1], s_list[:-1], biaslen_list[:-1])
+            ]
 
         d = self.d
         A = IntegerMatrix(d, d)
@@ -287,9 +418,17 @@ class ECDSASolver(object):
         f = Integer((2 ** (max(self.klen_list) - 1)) / w)
 
         def test_key(k):
-            if (k * self.ecdsa.GG).xy()[0] == self.r_list[0]:
+            if self.is_msb:
+                nonce = Integer(self.bias_list[0] + k)
+            else:
+                t = self.ecdsa.nbits - self.klen_list[0]
+                nonce = Integer(self.bias_list[0] + k * (2 ** t))
+            if (nonce * self.ecdsa.GG).xy()[0] == self.r_list[0]:
                 d = Integer(
-                    mod(inverse_mod(self.r_list[0], self.ecdsa.n) * (k * self.s_list[0] - self.h_list[0]), self.ecdsa.n)
+                    mod(
+                        inverse_mod(self.r_list[0], self.ecdsa.n) * (nonce * self.s_list[0] - self.h_list[0]),
+                        self.ecdsa.n,
+                    )
                 )
                 pubkey = self.ecdsa.GG * d
                 if (
@@ -321,6 +460,9 @@ class ECDSASolver(object):
         for row in range(M.B.nrows):
             G_powers[Integer(M.B[row][0] / f)] = Integer(M.B[row][0] / f) * self.ecdsa.GG
         G_powers[w] = w * self.ecdsa.GG
+
+        bias = self.bias_list[0]
+        G_powers[bias] = bias * self.ecdsa.GG
 
         A0 = tuple([Integer(M.B[i][0] / f) for i in range(M.B.nrows)])
         A1 = tuple([M.B[i][-1] for i in range(M.B.nrows)])
@@ -427,13 +569,38 @@ class ECDSASolver(object):
             else:
                 kG = sum(round(v[i]) * G_powers[A0[i]] for i in range(len(A0)))
 
-            r = self.r_list[0]
-            if (kG + G_powers[w]).xy()[0] == r:
-                return True
-            elif (-kG + G_powers[w]).xy()[0] == r:
-                return True
+            if self.is_msb:
+                r = self.r_list[0]
+                msb = self.bias_list[0]
+
+                # lsb = v[0] // f
+                # k1 = msb + w + lsb
+                # k2 = msb + w - lsb
+                kG1 = G_powers[msb] + G_powers[w] + kG
+                kG2 = G_powers[msb] + G_powers[w] - kG
+
+                if kG1.xy()[0] == r:
+                    return True
+                elif kG2.xy()[0] == r:
+                    return True
+                else:
+                    return False
+
             else:
-                return False
+                r = self.r_list[0]
+                lsb = self.bias_list[0]
+                t = self.ecdsa.nbits - self.klen_list[0]
+                kk = v[0] // f
+
+                k1 = (2 ** t) * (w + kk) + lsb
+                k2 = (2 ** t) * (w - kk) + lsb
+
+                if (k1 * self.ecdsa.GG).xy()[0] == r:
+                    return True
+                elif (k2 * self.ecdsa.GG).xy()[0] == r:
+                    return True
+                else:
+                    return False
 
         def invalidate_cache():
             self._data_for_test.clear_cache()
@@ -486,7 +653,7 @@ def compute_kernel(args):
 
     ecdsa = ECDSA(nbits=args.nlen)
 
-    lines, k_list, _ = ecdsa.sample(m=args.m, klen_list=args.klen_list, seed=args.seed, errors=args.e)
+    lines, k_list, _ = ecdsa.sample_msb_zero(m=args.m, klen_list=args.klen_list, seed=args.seed, errors=args.e)
     w_list = [2 ** (klen - 1) for klen in args.klen_list]
     f_list = [Integer(max(w_list) / wi) for wi in w_list]
 
