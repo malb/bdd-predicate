@@ -146,10 +146,8 @@ class ECDSA(object):
             msbi = Integer(0)
             msb = itob(msbi, self.baselen)
             lines.append(
-                "%s %s %s %s %s %s" % (
-                    str(klen_list[i]), "MSB", bytes.hex(msb),
-                    bytes.hex(hb), bytes.hex(sss), bytes.hex(vk.to_string())
-                )
+                "%s %s %s %s %s %s"
+                % (str(klen_list[i]), "MSB", bytes.hex(msb), bytes.hex(hb), bytes.hex(sss), bytes.hex(vk.to_string()))
             )
         return lines, k_list, d
 
@@ -190,13 +188,18 @@ class ECDSA(object):
                 k = lift(mod(nonce, 2 ** klen_list[i]))
                 msbi = Integer(nonce - k)
                 msb = itob(msbi, self.baselen)
-                assert (k + msbi == nonce)
-                assert (k < Integer(2 ** klen_list[i]))
+                assert k + msbi == nonce
+                assert k < Integer(2 ** klen_list[i])
                 k_list.append(k)
                 lines.append(
-                    "%s %s %s %s %s %s" % (
-                        str(klen_list[i]), "MSB", bytes.hex(msb),
-                        bytes.hex(hb), bytes.hex(sss), bytes.hex(vk.to_string())
+                    "%s %s %s %s %s %s"
+                    % (
+                        str(klen_list[i]),
+                        "MSB",
+                        bytes.hex(msb),
+                        bytes.hex(hb),
+                        bytes.hex(sss),
+                        bytes.hex(vk.to_string()),
                     )
                 )
             else:
@@ -204,13 +207,18 @@ class ECDSA(object):
                 lsbi = lift(mod(nonce, 2 ** t))
                 lsb = itob(lsbi, self.baselen)
                 k = lift(inverse_mod(2 ** t, self.n) * (mod(nonce, self.n) - mod(lsbi, self.n)))
-                assert (lsbi < Integer(2 ** t))
-                assert (lsbi + k * Integer(2 ** t) == nonce)
+                assert lsbi < Integer(2 ** t)
+                assert lsbi + k * Integer(2 ** t) == nonce
                 k_list.append(k)
                 lines.append(
-                    "%s %s %s %s %s %s" % (
-                        str(klen_list[i]), "LSB", bytes.hex(lsb),
-                        bytes.hex(hb), bytes.hex(sss), bytes.hex(vk.to_string())
+                    "%s %s %s %s %s %s"
+                    % (
+                        str(klen_list[i]),
+                        "LSB",
+                        bytes.hex(lsb),
+                        bytes.hex(hb),
+                        bytes.hex(sss),
+                        bytes.hex(vk.to_string()),
                     )
                 )
         return lines, k_list, d
@@ -243,12 +251,12 @@ class ECDSASolver(object):
         self.d = m + 1 if d is None else d
         self.threads = threads
         self.is_msb = True
-        self.bias_list = []     # ``bias`` refers to the known/leaked bits
+        self.bias_list = []  # ``bias`` refers to the known/leaked bits
 
         for line in lines:
             klen, xsb, bias, h, sig, key = line.strip().split()
             self.klen_list.append(int(klen))
-            if (xsb == "LSB"):
+            if xsb == "LSB":
                 self.is_msb = False
             self.bias_list.append(int(bias, 16))
             self.h_list.append(int(h, 16))
@@ -265,7 +273,7 @@ class ECDSASolver(object):
             self.r_list.append(int(r, 16))
             s = sig[2 * self.ecdsa.baselen :]
             self.s_list.append(int(s, 16))
-            assert (self.vk.verify_digest(binascii.unhexlify(r + s), binascii.unhexlify(h)))
+            assert self.vk.verify_digest(binascii.unhexlify(r + s), binascii.unhexlify(h))
             self.m += 1
             if m != 0 and self.m >= m:
                 break
@@ -307,29 +315,52 @@ class ECDSASolver(object):
         if self.is_msb:
             a_list = [
                 lift(
-                    - inverse_mod(s, p) * mod(h, p) + mod(bias_i, p) + wi
+                    -inverse_mod(s, p) * mod(h, p)
+                    + mod(bias_i, p)
+                    + wi
                     - mod(r, p) * inverse_mod(s, p) * inverse_mod(rm, p) * mod(sm, p) * (mod(bias_m, p) + wm)
                     + mod(r, p) * inverse_mod(s, p) * mod(hm, p) * inverse_mod(rm, p)
                 )
                 for wi, h, r, s, bias_i in zip(w_list[:-1], h_list[:-1], r_list[:-1], s_list[:-1], bias_list[:-1])
             ]
             t_list = [
-                lift(mod(r, p) * inverse_mod(s, p) * inverse_mod(rm, p) * mod(sm, p)) for r, s in zip(r_list[:-1], s_list[:-1])
+                lift(mod(r, p) * inverse_mod(s, p) * inverse_mod(rm, p) * mod(sm, p))
+                for r, s in zip(r_list[:-1], s_list[:-1])
             ]
 
         else:
             a_list = [
                 lift(
-                    inverse_mod(2 ** biaslen_i, p) * mod(bias_i, p) + wi - inverse_mod(2 ** biaslen_i, p) * inverse_mod(s, p) * mod(h, p)
-                    - inverse_mod(2 ** biaslen_i, p) * inverse_mod(s, p) * mod(r, p) * mod(sm, p) * inverse_mod(rm, p) * mod(bias_m, p)
+                    inverse_mod(2 ** biaslen_i, p) * mod(bias_i, p)
+                    + wi
+                    - inverse_mod(2 ** biaslen_i, p) * inverse_mod(s, p) * mod(h, p)
+                    - inverse_mod(2 ** biaslen_i, p)
+                    * inverse_mod(s, p)
+                    * mod(r, p)
+                    * mod(sm, p)
+                    * inverse_mod(rm, p)
+                    * mod(bias_m, p)
                     + inverse_mod(2 ** biaslen_i, p) * inverse_mod(s, p) * mod(r, p) * inverse_mod(rm, p) * mod(hm, p)
-                    - inverse_mod(2 ** biaslen_i, p) * inverse_mod(s, p) * mod(r, p) * mod(2 ** biaslen_m, p) * mod(sm, p) * inverse_mod(rm, p) * wm
+                    - inverse_mod(2 ** biaslen_i, p)
+                    * inverse_mod(s, p)
+                    * mod(r, p)
+                    * mod(2 ** biaslen_m, p)
+                    * mod(sm, p)
+                    * inverse_mod(rm, p)
+                    * wm
                 )
-                for wi, h, r, s, bias_i, biaslen_i in zip(w_list[:-1], h_list[:-1], r_list[:-1], s_list[:-1], bias_list[:-1], biaslen_list[:-1])
+                for wi, h, r, s, bias_i, biaslen_i in zip(
+                    w_list[:-1], h_list[:-1], r_list[:-1], s_list[:-1], bias_list[:-1], biaslen_list[:-1]
+                )
             ]
             t_list = [
                 lift(
-                    mod(r, p) * inverse_mod(s, p) * inverse_mod(rm, p) * mod(sm, p) * mod(2 ** biaslen_m, p) * inverse_mod(2 ** biaslen_i, p)
+                    mod(r, p)
+                    * inverse_mod(s, p)
+                    * inverse_mod(rm, p)
+                    * mod(sm, p)
+                    * mod(2 ** biaslen_m, p)
+                    * inverse_mod(2 ** biaslen_i, p)
                 )
                 for r, s, biaslen_i in zip(r_list[:-1], s_list[:-1], biaslen_list[:-1])
             ]
@@ -394,10 +425,16 @@ class ECDSASolver(object):
                 nonce = Integer(self.bias_list[0] + k * (2 ** t))
             if (nonce * self.ecdsa.GG).xy()[0] == self.r_list[0]:
                 d = Integer(
-                    mod(inverse_mod(self.r_list[0], self.ecdsa.n) * (nonce * self.s_list[0] - self.h_list[0]), self.ecdsa.n)
+                    mod(
+                        inverse_mod(self.r_list[0], self.ecdsa.n) * (nonce * self.s_list[0] - self.h_list[0]),
+                        self.ecdsa.n,
+                    )
                 )
                 pubkey = self.ecdsa.GG * d
-                if (itob(pubkey.xy()[0], self.ecdsa.baselen) + itob(pubkey.xy()[1], self.ecdsa.baselen) == self.vk.to_string()):
+                if (
+                    itob(pubkey.xy()[0], self.ecdsa.baselen) + itob(pubkey.xy()[1], self.ecdsa.baselen)
+                    == self.vk.to_string()
+                ):
                     return True, d
             return False, None
 

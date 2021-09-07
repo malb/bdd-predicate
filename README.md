@@ -39,7 +39,7 @@ The flagship application of this work is solving ECDSA with known nonce bits. Th
 3. To actually compute the secret key from input provided in a file, you can use the `solve` function. You need to specify the curve to use by name:
 
     ``` shell
-    sage -python ecdsa_cli.py solve -c secp256k1 sample_input.txt
+    sage -python ecdsa_cli.py solve -c secp256k1 sample_msb_input.txt
     ```
 
     Each line of the file is a space-separated list of the length of the unknown bits of the nonce, whether the MSB or LSB are known, the hex-encoded known nonce bits, the hex-encoded hash used in the ECDSA signature, the hex-encoded ECDSA signature as (r,s) concatenated together, and the hex-encoded public key. The `ecdsa.sample` and `ecdsa.sample_msb_zero` functions will generate sample input in this form.
@@ -49,7 +49,7 @@ Our `solve` scripts work for arbitrary most or least significant bits (although 
 The following example uses the `scale` strategy to continue searching until the solution is found, which can deal with errors in the data, and will parallelize the algorithm in 8 threads:
 
 ``` shell
-sage -python ecdsa_cli.py solve -c secp256k1 -f scale -p 8 sample_input.txt
+sage -python ecdsa_cli.py solve -c secp256k1 -f scale -p 8 sample_msb_input.txt
 ```
 
 If you wish to write your own script to use our functions as a library, here is a small custom Python script that shows how to invoke the relevant functions to compute the secret key for some randomly generated data:
