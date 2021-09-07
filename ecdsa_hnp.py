@@ -424,6 +424,9 @@ class ECDSASolver(object):
             G_powers[Integer(M.B[row][0] / f)] = Integer(M.B[row][0] / f) * self.ecdsa.GG
         G_powers[w] = w * self.ecdsa.GG
 
+        bias = self.bias_list[0]
+        G_powers[bias] = bias * self.ecdsa.GG
+
         A0 = tuple([Integer(M.B[i][0] / f) for i in range(M.B.nrows)])
         A1 = tuple([M.B[i][-1] for i in range(M.B.nrows)])
         return G_powers, A0, A1
@@ -532,14 +535,16 @@ class ECDSASolver(object):
             if self.is_msb:
                 r = self.r_list[0]
                 msb = self.bias_list[0]
-                lsb = v[0] // f
 
-                k1 = msb + w + lsb
-                k2 = msb + w - lsb
+                # lsb = v[0] // f
+                # k1 = msb + w + lsb
+                # k2 = msb + w - lsb
+                kG1 = G_powers[msb] + G_powers[w] + kG
+                kG2 = G_powers[msb] + G_powers[w] - kG
 
-                if (k1 * self.ecdsa.GG).xy()[0] == r:
+                if kG1.xy()[0] == r:
                     return True
-                elif (k2 * self.ecdsa.GG).xy()[0] == r:
+                elif kG2.xy()[0] == r:
                     return True
                 else:
                     return False
