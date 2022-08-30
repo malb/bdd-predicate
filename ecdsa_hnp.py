@@ -142,10 +142,7 @@ class ECDSA(object):
             else:
                 k, sss = self.sign(hb, sk, klen=klen_list[i], return_k=True)
             k_list.append(k)
-            lines.append(
-                "%s %s %s %s"
-                % (str(klen_list[i]), bytes.hex(hb), bytes.hex(sss), bytes.hex(vk.to_string()))
-            )
+            lines.append("%s %s %s %s" % (str(klen_list[i]), bytes.hex(hb), bytes.hex(sss), bytes.hex(vk.to_string())))
         return lines, k_list, d
 
 
@@ -235,8 +232,7 @@ class ECDSASolver(object):
             for wi, h, r, s in zip(w_list[:-1], h_list[:-1], r_list[:-1], s_list[:-1])
         ]
         t_list = [
-            -lift(mod(r, p) * inverse_mod(s, p) * inverse_mod(rm, p) * sm)
-            for r, s in zip(r_list[:-1], s_list[:-1])
+            -lift(mod(r, p) * inverse_mod(s, p) * inverse_mod(rm, p) * sm) for r, s in zip(r_list[:-1], s_list[:-1])
         ]
 
         d = self.d
@@ -295,15 +291,13 @@ class ECDSASolver(object):
             if (k * self.ecdsa.GG).xy()[0] == self.r_list[0]:
                 d = Integer(
                     mod(
-                        inverse_mod(self.r_list[0], self.ecdsa.n)
-                        * (k * self.s_list[0] - self.h_list[0]),
+                        inverse_mod(self.r_list[0], self.ecdsa.n) * (k * self.s_list[0] - self.h_list[0]),
                         self.ecdsa.n,
                     )
                 )
                 pubkey = self.ecdsa.GG * d
                 if (
-                    itob(pubkey.xy()[0], self.ecdsa.baselen)
-                    + itob(pubkey.xy()[1], self.ecdsa.baselen)
+                    itob(pubkey.xy()[0], self.ecdsa.baselen) + itob(pubkey.xy()[1], self.ecdsa.baselen)
                     == self.vk.to_string()
                 ):
                     return True, d
@@ -427,9 +421,7 @@ class ECDSASolver(object):
             if standard_basis:
                 nz = v[-1]
             else:
-                nz = sum(
-                    round(v[i]) * A1[i] for i in range(len(A1))
-                )  # the last coefficient must be non-zero
+                nz = sum(round(v[i]) * A1[i] for i in range(len(A1)))  # the last coefficient must be non-zero
 
             if abs(nz) != tau:
                 return False
@@ -511,9 +503,7 @@ def compute_kernel(args):
 
     ecdsa = ECDSA(nbits=args.nlen)
 
-    lines, k_list, _ = ecdsa.sample(
-        m=args.m, klen_list=args.klen_list, seed=args.seed, errors=args.e
-    )
+    lines, k_list, _ = ecdsa.sample(m=args.m, klen_list=args.klen_list, seed=args.seed, errors=args.e)
     w_list = [2 ** (klen - 1) for klen in args.klen_list]
     f_list = [Integer(max(w_list) / wi) for wi in w_list]
 
@@ -591,9 +581,7 @@ def benchmark(
     from usvp import solvers
 
     if nlen > 384:
-        logging.warning(
-            "% hotpatching with slower but more numerically stable `usvp_pred_cut_n_sieve_solve`."
-        )
+        logging.warning("% hotpatching with slower but more numerically stable `usvp_pred_cut_n_sieve_solve`.")
         solvers["sieve_pred"] = usvp_pred_cut_n_sieve_solve
 
     klen_list = make_klen_list(klen, m)

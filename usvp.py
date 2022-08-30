@@ -180,9 +180,7 @@ class USVPPredEnum:
             enum_obj = Enumeration(M, callbackf=callbackf)
             with tracer.context("enumeration", enum_obj=enum_obj, probability=prob, full=True):
                 try:
-                    solutions = enum_obj.enumerate(
-                        0, M.d, squared_target_norm / 2**ph, ph, pruning=coeffs
-                    )
+                    solutions = enum_obj.enumerate(0, M.d, squared_target_norm / 2**ph, ph, pruning=coeffs)
                     _, v = solutions[0]
                     found = True
                     solution = tuple([int(v_) for v_ in M.B.multiply_left(v)])
@@ -209,9 +207,7 @@ class USVPPredEnum:
         )
 
     @classmethod
-    def pruning_coefficients(
-        cls, squared_target_norm, r, preproc_cost, target_prob=None, precision=212
-    ):
+    def pruning_coefficients(cls, squared_target_norm, r, preproc_cost, target_prob=None, precision=212):
         """
         :param squared_target_norm: squared enumeration squared_target_norm
         :param r: basis profile
@@ -293,9 +289,7 @@ class USVPPredEnum:
 
         r, _ = simulate(r, BKZ.EasyParam(preproc_d))
 
-        (cost, prob), _ = cls.pruning_coefficients(
-            squared_target_norm, r, preproc_cost, target_prob=target_prob
-        )
+        (cost, prob), _ = cls.pruning_coefficients(squared_target_norm, r, preproc_cost, target_prob=target_prob)
         return int(round(cost * 64)), None
 
     @classmethod
@@ -324,9 +318,7 @@ class USVPPredBKZEnum:
     """
 
     @classmethod
-    def __call__(
-        cls, M, predicate, block_size, invalidate_cache=lambda: None, max_loops=8, threads=1, **kwds
-    ):
+    def __call__(cls, M, predicate, block_size, invalidate_cache=lambda: None, max_loops=8, threads=1, **kwds):
         bkz = BKZ2(M)
 
         if block_size > STRATEGIES_MAX_DIM:
@@ -411,11 +403,7 @@ class USVPPredBKZEnum:
             else:
                 break
         if found:
-            cost = (
-                max_loops
-                * d
-                * float(2 ** (0.1839 * found * log(found, 2.0) - 0.995 * found + 16.25))
-            )
+            cost = max_loops * d * float(2 ** (0.1839 * found * log(found, 2.0) - 0.995 * found + 16.25))
             return int(round(cost) * 64), found
         else:
             return None, False
@@ -446,9 +434,7 @@ class USVPPredSieve:
     """
 
     @classmethod
-    def __call__(
-        cls, M, predicate, invalidate_cache=lambda: None, preproc_offset=20, threads=1, **kwds
-    ):
+    def __call__(cls, M, predicate, invalidate_cache=lambda: None, preproc_offset=20, threads=1, **kwds):
         if preproc_offset and M.d >= 40:
             bkz_res = usvp_pred_bkz_sieve_solve(
                 M,
@@ -666,9 +652,7 @@ class USVPPredBKZSieve:
 
     """
 
-    def __call__(
-        cls, M, predicate, block_size, invalidate_cache=lambda: None, threads=1, max_loops=8, **kwds
-    ):
+    def __call__(cls, M, predicate, block_size, invalidate_cache=lambda: None, threads=1, max_loops=8, **kwds):
         params = SieverParams(threads=threads)
         g6k = Siever(M, params)
         tracer = SieveTreeTracer(g6k, root_label="bkz-sieve", start_clocks=True)
@@ -732,14 +716,7 @@ class USVPPredBKZSieve:
         _, block_size = USVPPredBKZEnum.estimate(M, squared_target_norm)
         if block_size:
             # TODO: this seems way too much
-            cost = (
-                max_loops
-                * d
-                * 2 ** float(0.38191949470057696 * block_size - 32.71092701524247)
-                * 3600
-                * 2
-                * 10**9
-            )
+            cost = max_loops * d * 2 ** float(0.38191949470057696 * block_size - 32.71092701524247) * 3600 * 2 * 10**9
             return cost, block_size
         else:
             return None, False
@@ -762,9 +739,7 @@ solvers = {
 }
 
 
-def usvp_pred_solve(
-    A, predicate, squared_target_norm, invalidate_cache=lambda: None, solver=None, **kwds
-):
+def usvp_pred_solve(A, predicate, squared_target_norm, invalidate_cache=lambda: None, solver=None, **kwds):
     """
     Solve uSVP with predicate.
 
@@ -820,13 +795,7 @@ def usvp_pred_solve(
 
 
 def usvp_pred_solve_scale(
-    A,
-    predicate,
-    squared_target_norm,
-    invalidate_cache=lambda: None,
-    solver=None,
-    scale_factor=1200,
-    **kwds
+    A, predicate, squared_target_norm, invalidate_cache=lambda: None, solver=None, scale_factor=1200, **kwds
 ):
     """
     Solve uSVP with predicate, on failure increase target norm and try again

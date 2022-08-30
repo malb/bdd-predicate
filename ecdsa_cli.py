@@ -50,9 +50,7 @@ def ecdsa():
 @click.option("-j", "--jobs", help="Number of parallel jobs", default=1)
 @click.option("-p", "--parallelism", help="Number of threads per job", default=1)
 @click.option("-s", "--seed", help="Randomness seed", type=int, default=None)
-@click.option(
-    "-d", "--dimension", help="Lattice dimension ≤ m+1, default: m+1", type=int, default=None
-)
+@click.option("-d", "--dimension", help="Lattice dimension ≤ m+1, default: m+1", type=int, default=None)
 @click.option(
     "-P",
     "--params",
@@ -384,9 +382,7 @@ def parse_benchmark(filename, predicate, csvfilename):
             date, host, nlen, m, klen, alg, seed, params = re.match(pattern, line).groups()
             tag = abs(hash((date, host, nlen, m, klen, alg, seed, params)))
         elif re.match(pattern_w_tag, line):
-            date, host, tag, nlen, m, klen, errors, alg, seed, params = re.match(
-                pattern_w_tag, line
-            ).groups()
+            date, host, tag, nlen, m, klen, errors, alg, seed, params = re.match(pattern_w_tag, line).groups()
             tag = int(tag, 16)
 
         if params:

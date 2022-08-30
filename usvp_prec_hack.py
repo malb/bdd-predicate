@@ -25,9 +25,7 @@ class USVPPredCutNSieve(USVPPredSieve):
     """
 
     @classmethod
-    def __call__(
-        cls, M, predicate, invalidate_cache=lambda: None, preproc_offset=20, threads=1, ph=0, **kwds
-    ):
+    def __call__(cls, M, predicate, invalidate_cache=lambda: None, preproc_offset=20, threads=1, ph=0, **kwds):
         # TODO bkz_sieve would be neater here
         if preproc_offset and M.d >= 40:
             bkz_res = usvp_pred_bkz_enum_solve(
