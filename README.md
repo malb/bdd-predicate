@@ -88,25 +88,27 @@ This framework builds on
 
 ### Using Conda/Manually
 
-``` shell
-conda create -n bddp python=3.7
+```shell
+conda create -n bddp python=3.10
 conda activate bddp
 conda install -c conda-forge sage
 
-git clone https://github.com/fplll/fplll
-cd fplll
-autoreconf -i
-./configure --prefix=$SAGE_LOCAL --disable-static
-make install
-cd ..
+# # It is generally not necessary to update FPLLL/FPyLLL
 
-git clone https://github.com/fplll/fpylll
-cd fpylll
-pip install -r requirements.txt
-pip install -r suggestions.txt
-python setup.py build
-python setup.py -q install
-cd ..
+# git clone https://github.com/fplll/fplll
+# cd fplll
+# autoreconf -i
+# ./configure --prefix=$SAGE_LOCAL --disable-static
+# make install
+# cd ..
+
+# git clone https://github.com/fplll/fpylll
+# cd fpylll
+# pip install -r requirements.txt
+# pip install -r suggestions.txt
+# python setup.py build
+# python setup.py -q install
+# cd ..
     
 git clone https://github.com/fplll/g6k
 cd g6k
@@ -124,7 +126,7 @@ cd ..
 
 Running
 
-``` shell
+```shell
 docker run -ti --rm -v `pwd`:/bdd-predicate -w /bdd-predicate martinralbrecht/bdd-predicate
 ```
 
