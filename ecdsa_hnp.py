@@ -207,6 +207,7 @@ class ECDSASolver(object):
 
         try:
             I = self.indices[self.nbases]  # noqa
+            self.current_indices = I
             self.nbases += 1
         except ValueError:
             raise StopIteration("No more bases to sample.")
@@ -288,10 +289,12 @@ class ECDSASolver(object):
         f = Integer((2 ** (max(self.klen_list) - 1)) / w)
 
         def test_key(k):
-            if (k * self.ecdsa.GG).xy()[0] == self.r_list[0]:
+            i = self.current_indices[0]
+            h, r, s = self.h_list[i], self.r_list[i], self.s_list[i]
+            if (k * self.ecdsa.GG).xy()[0] == r:
                 d = Integer(
                     mod(
-                        inverse_mod(self.r_list[0], self.ecdsa.n) * (k * self.s_list[0] - self.h_list[0]),
+                        inverse_mod(r, self.ecdsa.n) * (k * s - h),
                         self.ecdsa.n,
                     )
                 )
@@ -431,7 +434,7 @@ class ECDSASolver(object):
             else:
                 kG = sum(round(v[i]) * G_powers[A0[i]] for i in range(len(A0)))
 
-            r = self.r_list[0]
+            r = self.r_list[self.current_indices[0]]
             if (kG + G_powers[w]).xy()[0] == r:
                 return True
             elif (-kG + G_powers[w]).xy()[0] == r:
