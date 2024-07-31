@@ -183,7 +183,8 @@ class USVPPredEnum:
                     solutions = enum_obj.enumerate(0, M.d, squared_target_norm / 2**ph, ph, pruning=coeffs)
                     _, v = solutions[0]
                     found = True
-                    solution = tuple([int(v_) for v_ in M.B.multiply_left(v)])
+                    v = tuple(round(v_) for v_ in v)
+                    solution = tuple(v_ for v_ in M.B.multiply_left(v))
                     break
                 except EnumerationError:
                     pass
